@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { AllocationPage } from '../features/academic-years/pages/AllocationPage';
@@ -7,11 +8,10 @@ import { AssignmentDetailPage } from '../features/assignments/AssignmentDetailPa
 import { AssignmentListPage } from '../features/assignments/AssignmentListPage';
 import { RequireAdmin } from '../features/auth/RequireAdmin';
 import { RequirePasswordChange } from '../features/auth/RequirePasswordChange';
-// import { RequireFaculty } from '../features/auth/RequireFaculty';
-// import { RequireStudent } from '../features/auth/RequireStudent';
-// import { RoleLayout } from '../components/layout/RoleLayout';
-// import { FacultyHomePage } from '../features/teaching/FacultyHomePage';
-// import { AssistantPage } from '../features/assistant/AssistantPage';
+import { RequireFaculty } from '../features/auth/RequireFaculty';
+import { RequireStudent } from '../features/auth/RequireStudent';
+import { RoleLayout } from '../components/layout/RoleLayout';
+import { FacultyHomePage } from '../features/teaching/FacultyHomePage';
 import { ChangePasswordPage } from '../features/auth/pages/ChangePasswordPage';
 import { LoginPage } from '../features/auth/pages/LoginPage';
 import { BranchDetailPage, BranchFormPage, BranchListPage } from '../features/branches/BranchPages';
@@ -23,6 +23,10 @@ import { DepartmentFormPage, DepartmentListPage } from '../features/departments/
 import { FacultyDetailPage, FacultyFormPage, FacultyListPage } from '../features/faculty/FacultyPages';
 import { StudentDetailPage, StudentFormPage, StudentListPage } from '../features/students/StudentPages';
 
+const AssistantPage = lazy(() =>
+  import('../features/assistant/AssistantPage').then((module) => ({ default: module.AssistantPage })),
+);
+
 export function AppRouter() {
   return (
     <BrowserRouter>
@@ -31,18 +35,21 @@ export function AppRouter() {
         <Route element={<RequirePasswordChange />}>
           <Route path="/account/password" element={<ChangePasswordPage />} />
         </Route>
-        {/* Faculty dashboard
         <Route element={<RequireFaculty />}>
           <Route element={<RoleLayout title="Campus Teaching" />}>
             <Route path="/teach" element={<FacultyHomePage />} />
           </Route>
         </Route>
-        */}
-        {/* Student dashboard
         <Route element={<RequireStudent />}>
-          <Route path="/assistant" element={<AssistantPage />} />
+          <Route
+            path="/assistant"
+            element={(
+              <Suspense fallback={<main className="login-screen"><p className="status">Loading assistant...</p></main>}>
+                <AssistantPage />
+              </Suspense>
+            )}
+          />
         </Route>
-        */}
         <Route element={<RequireAdmin />}>
           <Route element={<AdminLayout />}>
             <Route path="/" element={<DashboardPage />} />

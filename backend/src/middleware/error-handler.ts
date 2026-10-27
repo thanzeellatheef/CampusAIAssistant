@@ -1,5 +1,6 @@
 import type { ErrorRequestHandler } from 'express';
-// import multer from 'multer';
+import multer from 'multer';
+import { env } from '../config/env';
 import { AppError } from '../utils/errors';
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
@@ -14,17 +15,20 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return;
   }
 
-  // if (err instanceof multer.MulterError) {
-  //   const message = err.code === 'LIMIT_FILE_SIZE' ? 'This PDF is larger than 8 MB.' : 'Could not read the uploaded file.';
-  //   res.status(400).json({
-  //     error: {
-  //       code: 'VALIDATION_ERROR',
-  //       message: 'Request validation failed',
-  //       details: [{ field: 'file', message }],
-  //     },
-  //   });
-  //   return;
-  // }
+  if (err instanceof multer.MulterError) {
+    const maxSizeMb = Math.ceil(env.rag.maxPdfBytes / (1024 * 1024));
+    const message = err.code === 'LIMIT_FILE_SIZE'
+      ? `This PDF exceeds the ${maxSizeMb} MB upload limit.`
+      : 'Could not read the uploaded file.';
+    res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Request validation failed',
+        details: [{ field: 'file', message }],
+      },
+    });
+    return;
+  }
 
   if (err instanceof SyntaxError && 'body' in err) {
     res.status(400).json({

@@ -1,8 +1,9 @@
 const path = require('path');
+const migrationDirectory = process.env.NODE_ENV === 'production' ? 'dist' : 'src';
 
 module.exports = {
   config: path.resolve('sequelize.config.js'),
-  'migrations-path': path.resolve('src', 'migrations'),
-  'seeders-path': path.resolve('src', 'seeders'),
-  'models-path': path.resolve('src', 'models'),
+  'migrations-path': path.resolve(migrationDirectory, 'migrations'),
+  'seeders-path': path.resolve(migrationDirectory, 'seeders'),
+  'models-path': path.resolve(migrationDirectory, 'models'),
 };

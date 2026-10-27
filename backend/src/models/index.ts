@@ -1,13 +1,13 @@
 import { AcademicClass } from './academic-class.model';
 import { AcademicTerm } from './academic-term.model';
 import { AcademicYear } from './academic-year.model';
-// import { AssistantChat } from './assistant-chat.model';
-// import { AssistantMessage } from './assistant-message.model';
+import { AssistantChat } from './assistant-chat.model';
+import { AssistantMessage } from './assistant-message.model';
 import { Branch } from './branch.model';
 import { ClassCourseOffering } from './class-course-offering.model';
 import { ClassCurriculumAssignment } from './class-curriculum-assignment.model';
-// import { CourseDocumentChunk } from './course-document-chunk.model';
-// import { CourseDocument } from './course-document.model';
+import { CourseDocumentChunk } from './course-document-chunk.model';
+import { CourseDocument } from './course-document.model';
 import { Course } from './course.model';
 import { CurriculumCourse } from './curriculum-course.model';
 import { Curriculum } from './curriculum.model';
@@ -68,32 +68,32 @@ ClassCourseOffering.belongsTo(ClassCurriculumAssignment, { foreignKey: 'classCur
 ClassCourseOffering.belongsTo(Course, { foreignKey: 'courseId' });
 ClassCourseOffering.belongsTo(Faculty, { foreignKey: 'assignedFacultyId' });
 
-// Course.hasMany(CourseDocument, { foreignKey: 'courseId' });
-// CourseDocument.belongsTo(Course, { foreignKey: 'courseId' });
-// CourseDocument.belongsTo(AcademicTerm, { foreignKey: 'academicTermId' });
-// CourseDocument.belongsTo(Faculty, { foreignKey: 'uploadedByFacultyId' });
-// CourseDocument.hasMany(CourseDocumentChunk, { foreignKey: 'documentId' });
-// CourseDocumentChunk.belongsTo(CourseDocument, { foreignKey: 'documentId' });
+Course.hasMany(CourseDocument, { foreignKey: 'courseId' });
+CourseDocument.belongsTo(Course, { foreignKey: 'courseId' });
+CourseDocument.belongsTo(AcademicTerm, { foreignKey: 'academicTermId' });
+CourseDocument.belongsTo(Faculty, { foreignKey: 'uploadedByFacultyId' });
+CourseDocument.hasMany(CourseDocumentChunk, { foreignKey: 'documentId' });
+CourseDocumentChunk.belongsTo(CourseDocument, { foreignKey: 'documentId' });
 
-// Student.hasMany(AssistantChat, { foreignKey: 'studentId' });
-// AssistantChat.belongsTo(Student, { foreignKey: 'studentId' });
-// AssistantChat.belongsTo(Course, { foreignKey: 'courseId' });
-// AssistantChat.belongsTo(AcademicTerm, { foreignKey: 'academicTermId' });
-// AssistantChat.hasMany(AssistantMessage, { foreignKey: 'chatId' });
-// AssistantMessage.belongsTo(AssistantChat, { foreignKey: 'chatId' });
+Student.hasMany(AssistantChat, { foreignKey: 'studentId' });
+AssistantChat.belongsTo(Student, { foreignKey: 'studentId' });
+AssistantChat.belongsTo(Course, { foreignKey: 'courseId' });
+AssistantChat.belongsTo(AcademicTerm, { foreignKey: 'academicTermId' });
+AssistantChat.hasMany(AssistantMessage, { foreignKey: 'chatId' });
+AssistantMessage.belongsTo(AssistantChat, { foreignKey: 'chatId' });
 
 export {
   AcademicClass,
   AcademicTerm,
   AcademicYear,
-  // AssistantChat,
-  // AssistantMessage,
+  AssistantChat,
+  AssistantMessage,
   Branch,
   ClassCourseOffering,
   ClassCurriculumAssignment,
   Course,
-  // CourseDocument,
-  // CourseDocumentChunk,
+  CourseDocument,
+  CourseDocumentChunk,
   Curriculum,
   CurriculumCourse,
   Department,

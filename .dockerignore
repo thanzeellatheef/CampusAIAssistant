@@ -1,0 +1,12 @@
+.git
+**/node_modules
+**/dist
+backend/storage
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+*.log
+.DS_Store

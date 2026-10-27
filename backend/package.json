@@ -9,7 +9,9 @@
     "test": "tsx --test tests/**/*.test.ts",
     "db:migrate": "NODE_OPTIONS='--require tsx/cjs' sequelize-cli db:migrate",
     "db:migrate:undo": "NODE_OPTIONS='--require tsx/cjs' sequelize-cli db:migrate:undo",
-    "db:seed": "NODE_OPTIONS='--require tsx/cjs' sequelize-cli db:seed:all"
+    "db:migrate:production": "sequelize-cli db:migrate",
+    "db:seed": "NODE_OPTIONS='--require tsx/cjs' sequelize-cli db:seed:all",
+    "db:release": "npm run db:migrate:production && sequelize-cli db:seed --seed 20261012120100-admin-user.js"
   },
   "dependencies": {
     "@google/genai": "^2.29.1",
@@ -19,9 +21,10 @@
     "dotenv": "^18.0.7",
     "express": "^4.22.3",
     "jsonwebtoken": "^9.0.3",
-    "multer": "^2.4.0",
+    "multer": "^2.5.0",
     "mysql2": "^3.24.5",
     "sequelize": "^6.37.8",
+    "sequelize-cli": "^6.6.5",
     "unpdf": "^1.8.1"
   },
   "devDependencies": {
@@ -32,7 +35,6 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.3.0",
     "@types/node": "^26.6.5",
-    "sequelize-cli": "^6.6.5",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3"
   }
