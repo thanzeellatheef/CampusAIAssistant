@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { env } from '../config/env';
 import { sequelize } from '../database/connection';
@@ -10,8 +9,8 @@ import { requireEligibleFaculty, requireStudentCourse } from './course-access.se
 import { getGeminiClient } from './gemini.client';
 import { readPdfPages } from './pdf-text';
 import { l2Normalize } from './vectors';
+import { removeCoursePdf, storeCoursePdf } from './course-file-storage.service';
 
-const STORAGE_DIR = env.documentStorageDir;
 const BATCH_SIZE = 16;
 
 export type DocumentDto = {
@@ -54,7 +53,7 @@ export async function ingestPdf(input: {
 	}
 
 	const filename = sanitizeFilename(input.originalFilename);
-	const storagePath = path.posix.join('storage', 'course-documents', `${contentSha256}.pdf`);
+	const storagePath = path.posix.join('course-documents', `${contentSha256}.pdf`);
 	const document =
 		existing ??
 		(await CourseDocument.create({
@@ -90,8 +89,7 @@ export async function ingestPdf(input: {
 	}
 
 	try {
-		await mkdir(STORAGE_DIR, { recursive: true });
-		await writeFile(path.join(STORAGE_DIR, `${contentSha256}.pdf`), input.bytes);
+		await storeCoursePdf(storagePath, input.bytes);
 		const pages = await readPdfPages(input.bytes);
 		if (pages.length === 0 || pages.length > env.rag.maxPdfPages) {
 			throw unprocessable(
@@ -180,7 +178,6 @@ export async function deleteCourseDocument(userId: number, documentId: number): 
 		throw notFound('Document not found.');
 	}
 	await requireEligibleFaculty(userId, Number(document.courseId), Number(document.academicTermId));
-	const storagePath = path.resolve(STORAGE_DIR, `${document.contentSha256}.pdf`);
 	await sequelize.transaction(async (transaction) => {
 		await CourseDocumentChunk.destroy({ where: { documentId: document.id }, transaction });
 		await document.destroy({ transaction });
@@ -189,10 +186,7 @@ export async function deleteCourseDocument(userId: number, documentId: number): 
 	if (stillReferenced > 0) {
 		return;
 	}
-	await unlink(storagePath).catch((error: unknown) => {
-		if (isMissingFile(error)) {
-			return;
-		}
+	await removeCoursePdf(document.storagePath).catch(() => {
 		console.error(`document ${document.id} file cleanup failed`);
 	});
 }
@@ -249,10 +243,6 @@ function isGeminiKeyError(error: unknown): boolean {
 	const status = typeof value?.status === 'number' ? value.status : 0;
 	const message = typeof value?.message === 'string' ? value.message.toLowerCase() : '';
 	return status === 401 || status === 403 || /api.?key|credential|unauthorized|permission denied/.test(message);
-}
-
-function isMissingFile(error: unknown): boolean {
-	return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: string }).code === 'ENOENT';
 }
 
 function toDocumentDto(document: CourseDocument): DocumentDto {

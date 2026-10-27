@@ -7,10 +7,13 @@ const validConfig: ProductionConfigInput = {
 	jwtSecret: 'a'.repeat(48),
 	dbUser: 'campus_app',
 	dbPassword: 'a-strong-database-password',
+	dbSsl: true,
 	geminiApiKey: 'configured-key',
 	corsOrigin: 'https://campus.example.edu',
-	documentStorageDir: '/var/lib/campus/course-documents',
-	documentStorageConfigured: true,
+	objectStorageEndpoint: 'https://example.r2.cloudflarestorage.com',
+	objectStorageBucket: 'campus-pdfs',
+	objectStorageAccessKeyId: 'access-key',
+	objectStorageSecretAccessKey: 'secret-key',
 };
 
 describe('production configuration', () => {
@@ -25,10 +28,13 @@ describe('production configuration', () => {
 			jwtSecret: 'short-local-secret',
 			dbUser: 'root',
 			dbPassword: '',
+			dbSsl: false,
 			geminiApiKey: '',
 			corsOrigin: 'http://localhost:5173',
-			documentStorageDir: 'storage/course-documents',
-			documentStorageConfigured: false,
+			objectStorageEndpoint: '',
+			objectStorageBucket: '',
+			objectStorageAccessKeyId: '',
+			objectStorageSecretAccessKey: '',
 		}));
 	});
 
@@ -39,10 +45,13 @@ describe('production configuration', () => {
 				jwtSecret: 'workshop-local-jwt-secret',
 				dbUser: 'root',
 				dbPassword: '',
+				dbSsl: false,
 				geminiApiKey: '',
 				corsOrigin: 'http://localhost:5173',
-				documentStorageDir: '/var/lib/campus/course-documents',
-				documentStorageConfigured: false,
+				objectStorageEndpoint: '',
+				objectStorageBucket: '',
+				objectStorageAccessKeyId: '',
+				objectStorageSecretAccessKey: '',
 			}),
 			/Invalid production configuration/,
 		);

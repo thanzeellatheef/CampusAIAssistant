@@ -84,22 +84,30 @@ function readRagConfig() {
 const nodeEnv = process.env.NODE_ENV ?? 'development';
 const dbUser = process.env.DB_USER?.trim() ?? '';
 const dbPassword = process.env.DB_PASSWORD ?? '';
+const dbSslRaw = process.env.DB_SSL?.trim().toLowerCase();
+const dbSsl = dbSslRaw === 'true' || (!dbSslRaw && nodeEnv === 'production');
 const geminiApiKey = process.env.GEMINI_API_KEY?.trim() ?? '';
 const corsOrigin = process.env.CORS_ORIGIN?.trim() || 'http://localhost:5173';
-const documentStorageConfigured = Boolean(process.env.DOCUMENT_STORAGE_DIR?.trim());
 const documentStorageDir = path.resolve(
   process.env.DOCUMENT_STORAGE_DIR?.trim() || path.resolve(__dirname, '../../storage/course-documents'),
 );
+const objectStorageEndpoint = process.env.S3_ENDPOINT?.trim() ?? '';
+const objectStorageBucket = process.env.S3_BUCKET?.trim() ?? '';
+const objectStorageAccessKeyId = process.env.S3_ACCESS_KEY_ID?.trim() ?? '';
+const objectStorageSecretAccessKey = process.env.S3_SECRET_ACCESS_KEY?.trim() ?? '';
 
 validateProductionConfig({
   nodeEnv,
   jwtSecret,
   dbUser,
   dbPassword,
+  dbSsl,
   geminiApiKey,
   corsOrigin,
-  documentStorageDir,
-  documentStorageConfigured,
+  objectStorageEndpoint,
+  objectStorageBucket,
+  objectStorageAccessKeyId,
+  objectStorageSecretAccessKey,
 });
 
 export const env = {
@@ -111,11 +119,19 @@ export const env = {
     name: requireEnv('DB_NAME'),
     user: requireEnv('DB_USER'),
     password: dbPassword,
+    ssl: dbSsl,
   },
   jwtSecret,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN?.trim() || '8h',
   corsOrigin,
   documentStorageDir,
+  objectStorage: {
+    endpoint: objectStorageEndpoint,
+    bucket: objectStorageBucket,
+    region: process.env.S3_REGION?.trim() || 'auto',
+    accessKeyId: objectStorageAccessKeyId,
+    secretAccessKey: objectStorageSecretAccessKey,
+  },
   bcryptRounds: readRounds(),
   appTimezone: process.env.APP_TIMEZONE?.trim() || 'Asia/Kolkata',
   geminiApiKey,

@@ -1,64 +1,80 @@
-# Deploy to Railway
+# Deploy: Render + TiDB + R2
 
-The repository is packaged as one Docker service: Express serves both `/api/v1` and the built React app from one HTTPS origin. Railway configuration runs migrations and seeds only the initial admin before deployment, and checks `/api/v1/health`.
+This setup uses one Render Docker web service for the React app and Express API, TiDB Cloud Starter for MySQL-compatible data, and Cloudflare R2 for uploaded PDFs.
 
-The Docker image was built locally and smoke-tested: health returned `200`, and `/login` served the frontend. The backend suite passes 31 tests. No Railway project is linked from this workspace, so the first project creation and secret entry must be done in the Railway dashboard or after authenticating the Railway CLI.
+## Cost and reliability
 
-## 1. Create Railway project
+This is a low-traffic hobby deployment, not a production availability guarantee. Render Free services sleep after 15 minutes without inbound traffic and can take about a minute to wake. They have an ephemeral filesystem and no persistent disk, so PDFs must use R2. Free service hours and provider limits apply.
 
-1. In Railway, create a project and add a MySQL database service.
-2. Add this repository as a service from GitHub, with the repository root as the build context. Railway detects the root `Dockerfile` and `railway.json`.
-3. Ensure the web service uses the Dockerfile and has a public domain enabled. The app serves the frontend and API on that same domain.
-4. Attach a persistent volume to the web service mounted at `/var/lib/campus`. Set `DOCUMENT_STORAGE_DIR=/var/lib/campus/course-documents`.
-5. Keep the web service to one replica unless uploads are moved to shared object storage. Local persistent volumes are not shared across replicas.
+Cloudflare R2 currently includes 10 GB-month of Standard storage, 1 million Class A operations, and 10 million Class B operations per month, with free egress. Usage beyond the free allowance can incur charges. TiDB Starter has its own quotas and limits. Check provider pricing before launch; this combination is not a guaranteed $0 plan.
 
-## 2. Configure variables
+## 1. Create TiDB Cloud Starter
 
-Name the database service `MySQL` or change the service reference names below to match. Add these variables to the web service. Railway's reference syntax keeps the private database credentials out of Git.
+1. Create a TiDB Cloud Starter instance.
+2. In TiDB's **Connect** dialog, create/save a database password and copy the endpoint, port, database name, and full TiDB username (including its required cluster prefix).
+3. Allow network access from the Render service as required by TiDB's access controls.
+4. Keep TLS enabled. TiDB Starter requires TLS for public connections; this app verifies server certificates when `DB_SSL=true`.
 
-The Railway MySQL template account may be `root`, which the app intentionally rejects for production. Connect to the MySQL service once with its generated administrative credentials and create a dedicated app account. Replace the placeholders with your generated database name and a new password, and run this SQL in the MySQL console:
+The app's database user must not be `root`. Use the non-root user provided by TiDB Starter, with its generated password.
 
-```sql
-CREATE USER 'campus_app'@'%' IDENTIFIED BY '<unique-app-database-password>';
-GRANT ALL PRIVILEGES ON `<production-database>`.* TO 'campus_app'@'%';
-```
+## 2. Create R2 bucket and API credentials
 
-Use `campus_app` and that new password for the web service's `DB_USER` and `DB_PASSWORD`; do not reference the template's root credentials there.
+1. Create a Cloudflare R2 bucket using Standard storage.
+2. Create an R2 S3 API token with object read/write permissions scoped to this bucket.
+3. Record the S3 endpoint (`https://<account-id>.r2.cloudflarestorage.com`), bucket name, access key ID, and secret access key. Store them in Render secrets only.
+
+The service uses S3-compatible object operations. PDFs remain in R2 across Render sleep/restarts/redeploys; TiDB stores document metadata and embeddings.
+
+## 3. Deploy the GitHub repository on Render
+
+1. In Render, choose **New > Blueprint** and connect the GitHub repository `ArkaanSayed/CampusAIAssistant` on branch `main`.
+2. Render will read the root `render.yaml` and deploy the root `Dockerfile` as a Docker web service.
+3. Keep the service on the `free` plan for the trial/hobby setup. No Render disk is needed because PDFs are in R2.
+4. The Blueprint uses `dockerCommand: npm run db:release && npm start`. Free Render does not support pre-deploy one-off jobs, so this idempotent migration/admin-seed command runs at service startup. It is safe to rerun: migrations are tracked and the admin seeder skips an existing admin.
+5. The frontend and API share one HTTPS origin. Render's health check is `/api/v1/health`.
+
+If Render reports the service name/subdomain differs from the intended name, set `CORS_ORIGIN` to the exact HTTPS URL shown by Render, with no trailing slash, then save and redeploy.
+
+## 4. Set Render environment variables
+
+The Blueprint prompts for variables marked `sync: false`. Set these in Render's service environment. Do not copy values from the local `.env`, commit credentials, or send secrets in chat.
 
 ```dotenv
 NODE_ENV=production
-DB_HOST=${{MySQL.MYSQLHOST}}
-DB_PORT=${{MySQL.MYSQLPORT}}
-DB_NAME=${{MySQL.MYSQLDATABASE}}
-DB_USER=${{MySQL.MYSQLUSER}}
-DB_PASSWORD=${{MySQL.MYSQLPASSWORD}}
-JWT_SECRET=<unique-random-secret-at-least-32-characters>
-GEMINI_API_KEY=<new-rotated-provider-key>
-ADMIN_EMAIL=<initial-admin-email>
-ADMIN_PASSWORD=<unique-initial-admin-password>
-DOCUMENT_STORAGE_DIR=/var/lib/campus/course-documents
-CORS_ORIGIN=https://${{RAILWAY_PUBLIC_DOMAIN}}
+DB_SSL=true
+DB_HOST=<TiDB host>
+DB_PORT=4000
+DB_NAME=<TiDB database name>
+DB_USER=<full TiDB username including cluster prefix>
+DB_PASSWORD=<TiDB password>
+JWT_SECRET=<unique random secret at least 32 characters>
+GEMINI_API_KEY=<new rotated Gemini API key>
+ADMIN_EMAIL=<initial admin email>
+ADMIN_PASSWORD=<unique initial admin password at least 8 characters>
+S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+S3_REGION=auto
+S3_BUCKET=<R2 bucket name>
+S3_ACCESS_KEY_ID=<R2 access key ID>
+S3_SECRET_ACCESS_KEY=<R2 secret access key>
+CORS_ORIGIN=https://<exact-render-service-domain>
 ```
 
-For Railway's MySQL template, verify the generated database variable is named `MYSQLDATABASE`; if the template exposes `MYSQL_DATABASE` instead, use that exact name in the reference. Generate the web service's public domain before deploying so `RAILWAY_PUBLIC_DOMAIN` resolves. The frontend and API share the domain and the frontend calls `/api/v1`, so no separate frontend API URL is required. Do not put secret values in Git or chat.
+The Render Blueprint generates `JWT_SECRET`. Replace any leaked Gemini key before deploying. `DOCUMENT_STORAGE_DIR` is only used for local development and is not required in production.
 
-The production server rejects default/demo secrets, root/empty-password database credentials, non-HTTPS origins, a missing Gemini key, and an unset/non-absolute document-storage path. The current `.env` is local development configuration and must not be deployed.
+## 5. Verify deployment
 
-## 3. Deploy and initialize
+- Wait for Render's first deploy to report healthy. The first request after idle may take about a minute while the free service wakes.
+- Open `https://<service-domain>/api/v1/health`; expect `{"status":"ok"}`.
+- Sign in with the initial admin account.
+- Create the academic setup, faculty, student accounts, and assignments.
+- Upload a small test PDF as faculty. Confirm it becomes `READY`, then let the service restart/sleep and verify the material remains listed.
+- Sign in as a student with access to that course, ask a question, and confirm the answer cites the uploaded material.
+- Check TiDB and R2 quotas/usage periodically; configure billing alerts or limits with each provider.
 
-Railway's pre-deploy command runs `npm run db:release`, which applies migrations and creates the configured initial admin only if it does not already exist. It deliberately does not run the demo academic seeder. Create academic years, courses, faculty, students, and assignments through the admin UI after first login.
+## Known limitations
 
-The container start command is `node dist/server.js`; Railway supplies the listening `PORT`. The health check is `/api/v1/health`.
-
-## 4. Verify launch
-
-- Confirm the deployment is healthy and `https://<domain>/api/v1/health` returns `200`.
-- Sign in as the initial admin over HTTPS, then verify faculty and student accounts.
-- Upload a test PDF, wait for `READY`, and verify it remains listed after a redeploy/restart.
-- Ask a question grounded in that PDF and confirm the answer cites it.
-- Verify database backups and uploaded-volume backups can be restored.
-- Rotate any credentials that have been shared outside the provider's secret manager.
-
-## Important storage constraint
-
-Railway's attached volume provides persistence for a single service instance, not shared storage across multiple replicas. For horizontal scaling, replace local PDF storage with a shared S3-compatible object store and use it for upload, delete, and retrieval before adding replicas.
+- Free Render services sleep when idle and may be restarted; cold starts delay the first request.
+- R2 free allowance is quota-limited. Requests/storage beyond included usage may cost money.
+- TiDB Starter is an external public database endpoint; use its TLS-required connection and strong generated password.
+- The current service processes PDF embeddings synchronously during uploads. Large PDFs or Gemini rate limits can make an upload slow or fail; use small PDFs for the free deployment.
+- The initial admin is created automatically at startup from `ADMIN_EMAIL` and `ADMIN_PASSWORD`. Do not run the demo seeder in this environment.

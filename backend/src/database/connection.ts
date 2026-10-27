@@ -12,5 +12,6 @@ export const sequelize = new Sequelize(env.db.name, env.db.user, env.db.password
   },
   dialectOptions: {
     supportBigNumbers: true,
+    ...(env.db.ssl ? { ssl: { minVersion: 'TLSv1.2', rejectUnauthorized: true } } : {}),
   },
 });

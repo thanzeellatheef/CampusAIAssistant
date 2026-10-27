@@ -3,10 +3,13 @@ export type ProductionConfigInput = {
 	jwtSecret: string;
 	dbUser: string;
 	dbPassword: string;
+	dbSsl: boolean;
 	geminiApiKey: string;
 	corsOrigin: string;
-	documentStorageDir: string;
-	documentStorageConfigured: boolean;
+	objectStorageEndpoint: string;
+	objectStorageBucket: string;
+	objectStorageAccessKeyId: string;
+	objectStorageSecretAccessKey: string;
 };
 
 export function validateProductionConfig(config: ProductionConfigInput): void {
@@ -21,6 +24,9 @@ export function validateProductionConfig(config: ProductionConfigInput): void {
 	if (!config.dbUser.trim() || config.dbUser.toLowerCase() === 'root' || !config.dbPassword) {
 		problems.push('DB_USER must be a non-root database account and DB_PASSWORD must be set.');
 	}
+	if (!config.dbSsl) {
+		problems.push('DB_SSL must be enabled for production database connections.');
+	}
 	if (!config.geminiApiKey) {
 		problems.push('GEMINI_API_KEY must be configured for document indexing and answers.');
 	}
@@ -32,15 +38,11 @@ export function validateProductionConfig(config: ProductionConfigInput): void {
 	} catch {
 		problems.push('CORS_ORIGIN must be a valid HTTPS origin.');
 	}
-	if (!config.documentStorageConfigured || !isAbsolutePath(config.documentStorageDir)) {
-		problems.push('DOCUMENT_STORAGE_DIR must be an absolute path on persistent storage.');
+	if (!config.objectStorageEndpoint || !config.objectStorageBucket || !config.objectStorageAccessKeyId || !config.objectStorageSecretAccessKey) {
+		problems.push('S3-compatible object storage endpoint, bucket, and credentials must be configured for production uploads.');
 	}
 
 	if (problems.length > 0) {
 		throw new Error(`Invalid production configuration: ${problems.join(' ')}`);
 	}
-}
-
-function isAbsolutePath(value: string): boolean {
-	return value.startsWith('/') || /^[A-Za-z]:[\\/]/.test(value);
 }
