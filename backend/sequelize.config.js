@@ -7,6 +7,9 @@ const shared = {
   host: process.env.DB_HOST || '127.0.0.1',
   port: Number(process.env.DB_PORT || 3306),
   dialect: 'mysql',
+  dialectOptions: process.env.DB_SSL === 'true'
+    ? { ssl: { minVersion: 'TLSv1.2', rejectUnauthorized: true } }
+    : {},
   migrationStorageTableName: 'sequelize_meta',
 };
 
