@@ -11,7 +11,8 @@
     "db:migrate:undo": "NODE_OPTIONS='--require tsx/cjs' sequelize-cli db:migrate:undo",
     "db:migrate:production": "sequelize-cli db:migrate",
     "db:seed": "NODE_OPTIONS='--require tsx/cjs' sequelize-cli db:seed:all",
-    "db:release": "npm run db:migrate:production && sequelize-cli db:seed --seed 20261012120100-admin-user.js"
+    "db:release": "npm run db:migrate:production && sequelize-cli db:seed --seed 20261012120100-admin-user.js",
+    "start:release": "npm run db:release && npm start"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1157.0",
